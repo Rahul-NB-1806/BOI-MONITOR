@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- BOI Brand Colors -->
+    <color name="boi_primary">#1A4B8C</color>   <!-- Deep BOI Blue -->
+    <color name="boi_dark">#102D5A</color>        <!-- Darker Navy -->
+    <color name="boi_accent">#D4AF37</color>      <!-- Gold accent -->
+
+    <!-- Backgrounds -->
+    <color name="bg_primary">#F0F4F8</color>
+    <color name="bg_dark_primary">#F0F4F8</color>
+    <color name="bg_secondary">#E8EEF4</color>
+
+    <!-- Card backgrounds -->
+    <color name="card_surface">#FFFFFF</color>
+    <color name="card_upi">#1A7A40</color>        <!-- Green for UPI -->
+    <color name="card_cleared">#1A4B8C</color>    <!-- Blue for cleared -->
+    <color name="card_returned">#C0392B</color>   <!-- Red for returned -->
+    <color name="card_presented">#7B3FA0</color>  <!-- Purple for presented -->
+
+    <!-- Status Colors -->
+    <color name="status_active">#1A7A40</color>
+    <color name="status_inactive">#9E9E9E</color>
+    <color name="status_cleared">#1A7A40</color>
+    <color name="status_returned">#C0392B</color>
+    <color name="status_presented">#7B3FA0</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#1A1A2E</color>
+    <color name="text_secondary">#5A6B7D</color>
+    <color name="text_tertiary">#8FA3B8</color>
+
+    <!-- Utility -->
+    <color name="white">#FFFFFF</color>
+    <color name="white_70">#B3FFFFFF</color>
+    <color name="white_60">#99FFFFFF</color>
+    <color name="upi_green">#1A7A40</color>
+
+</resources>

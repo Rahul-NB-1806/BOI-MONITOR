@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.BOIMonitor" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/boi_primary</item>
+        <item name="colorPrimaryVariant">@color/boi_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/boi_accent</item>
+        <item name="colorOnSecondary">@color/boi_dark</item>
+        <item name="android:statusBarColor">@color/boi_dark</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+        <item name="android:windowBackground">@color/bg_primary</item>
+    </style>
+
+</resources>

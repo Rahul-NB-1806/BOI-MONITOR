@@ -1,0 +1,64 @@
+=== BOI Monitor — TDD Testing & Bug Fix Session ===
+Date: 2026-06-09
+
+== Phase 1: Tests (RED) ==
+
+1. Created FormatUtilsTest.java (app/src/test/java/com/boi/monitor/util/)
+   - formatCurrencyFromPaise: 4 tests (normal, zero, large, exact rupee)
+   - formatCurrency: 1 test (double input)
+   - truncate: 6 tests (short, exact, long/ellipsis, null, empty, min edge)
+   - chequeStatusLabel: 6 tests (all 3 statuses, null, unknown, case-insensitive)
+   - formatDate: 1 test (null returns em-dash)
+
+2. Created ParsedNotificationTest.java (app/src/test/java/com/boi/monitor/model/)
+   - isValid(): 6 tests (all 4 valid types + UNRECOGNIZED + default constructor)
+   - isUpiCredit(): 5 tests (UPI_CREDIT returns true, rest return false)
+   - isCheque(): 5 tests (all 3 cheque types + UPI + UNRECOGNIZED)
+
+3. Extended NotificationParserTest.java (app/src/test/java/com/boi/monitor/parser/)
+   - Extra whitespace edge case (cheque cleared)
+   - Extra whitespace edge case (UPI credit)
+   - Unicode ₹ symbol handling
+   - null raw text
+   - whitespace-only input
+   - trailing newlines
+
+== Phase 2: Bug Fixes (GREEN) ==
+
+4. Fixed NotificationParser.java — added Log.w() in all 4 catch blocks
+   - Improved debuggability of parse failures
+   - Added TAG constant and android.util.Log import
+
+5. Fixed FormatUtils.java — thread safety
+   - Removed shared static SimpleDateFormat (was not thread-safe)
+   - formatDate() now creates a new instance per call
+   - formatCurrency() / formatCurrencyFromPaise() now create fresh NumberFormat
+
+6. Fixed FirebaseDataModule.java — deduplication logic
+   - Before: only PRESENTED→CLEARED/RETURNED upgrades; first-seen-wins for same status
+   - After: status scoring (CLEARED > RETURNED > PRESENTED), ties broken by timestamp
+   - Added shouldReplace() helper and statusScore() ranking
+
+7. Fixed FirebaseDataModule.java — migration guard
+   - Before: 3 Firestore queries on every auth state change
+   - After: one-shot flag per user uid prevents redundant queries
+
+8. Fixed BOINotificationListenerService.java — null ref dedup
+   - Before: null ref → "NO_REF" + amount as dedup key (false duplicates)
+   - After: skip dedup entirely when reference number is unavailable
+
+9. Fixed VoiceEngine.java — zero amount guard
+   - Before: announces "Received 0 rupees through UPI."
+   - After: silently skip announcement when paise <= 0
+
+10. Fixed AdminLoginActivity.java — deprecated onBackPressed()
+    - Replaced with getOnBackPressedDispatcher().onBackPressed()
+
+== Running Tests — Second Run (with fixes) ==
+- SDK path: /mnt/c/Users/rahul/AppData/Local/Android/Sdk
+- Command: ./gradlew :app:testDebugUnitTest
+- Result: BUILD SUCCESSFUL in 27s
+- 76 tests completed, 0 failures, 0 ignored
+- All 3 test classes passed: NotificationParserTest (42), ParsedNotificationTest (16), FormatUtilsTest (18)
+
+Status: ALL TESTS PASSING ✅

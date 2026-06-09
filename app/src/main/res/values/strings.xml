@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BOI Monitor</string>
+    <string name="service_running">BOI Notification Monitor Active</string>
+    <string name="notification_access_title">Notification Access Required</string>
+    <string name="notification_access_message">BOI Monitor needs notification access to track transactions in real time.</string>
+    <string name="enable_now">Enable Now</string>
+    <string name="later">Later</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+    <string name="no_upi_transactions">No UPI transactions yet</string>
+    <string name="no_cheque_transactions">No cheque activity yet</string>
+</resources>

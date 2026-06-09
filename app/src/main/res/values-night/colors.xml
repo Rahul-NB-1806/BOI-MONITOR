@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Mode overrides -->
+    <color name="bg_primary">#0D1B2A</color>
+    <color name="bg_dark_primary">#0D1B2A</color>
+    <color name="bg_secondary">#162032</color>
+    <color name="card_surface">#1C2B3A</color>
+    <color name="text_primary">#E8EEF4</color>
+    <color name="text_secondary">#8FA3B8</color>
+    <color name="text_tertiary">#5A6B7D</color>
+</resources>

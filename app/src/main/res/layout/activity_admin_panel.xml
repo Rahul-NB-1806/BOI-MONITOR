@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/bg_primary">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Admin Panel"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/tv_admin_user"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Logged in as: —"
+        android:textSize="12sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Stats Card -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/card_surface">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NOTIFICATION LOGS"
+                android:textSize="10sp"
+                android:textColor="@color/text_secondary"
+                android:letterSpacing="0.15"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:id="@+id/tv_log_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Total logs: —"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tv_processed_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Processed: —"
+                android:textSize="14sp"
+                android:textColor="@color/status_cleared"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tv_unprocessed_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Unprocessed: —"
+                android:textSize="14sp"
+                android:textColor="@color/status_returned" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- App Info -->
+    <TextView
+        android:id="@+id/tv_app_version"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Refresh Stats"
+        app:backgroundTint="@color/boi_primary" />
+
+</LinearLayout>
