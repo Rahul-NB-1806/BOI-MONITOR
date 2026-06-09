@@ -3,7 +3,7 @@
 /local.properties
 /.idea
 .DS_Store
-/build
+build/
 /captures
 .externalNativeBuild
 .cxx
@@ -21,9 +21,6 @@ out/
 *.trace
 *.pid
 *.sha1
-*.png
-local.properties
-/app/google-services.json
-{app/
 local.properties
 app/google-services.json
+{app/
