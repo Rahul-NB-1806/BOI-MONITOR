@@ -141,7 +141,7 @@ public class VoiceEngine implements TextToSpeech.OnInitListener {
 
         String utteranceId = "boi_upi_" + System.currentTimeMillis();
         Bundle params = new Bundle();
-        params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_NOTIFICATION);
+        params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC);
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId);
         Log.i(TAG, "TTS speaking: " + text);
     }

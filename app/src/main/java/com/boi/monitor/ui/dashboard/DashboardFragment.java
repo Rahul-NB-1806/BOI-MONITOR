@@ -15,12 +15,14 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.boi.monitor.R;
 import com.boi.monitor.databinding.FragmentDashboardBinding;
 import com.boi.monitor.model.ChequeTransaction;
 import com.boi.monitor.model.DashboardStats;
 import com.boi.monitor.model.UpiTransaction;
+import com.boi.monitor.network.ApiDataModule;
 import com.boi.monitor.service.BOINotificationListenerService;
 import com.boi.monitor.util.Constants;
 import com.boi.monitor.util.FormatUtils;
@@ -55,9 +57,22 @@ public class DashboardFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        setupSwipeRefresh();
         setupRecyclerViews();
         setupViewModel();
         updatePermissionChip();
+    }
+
+    private void setupSwipeRefresh() {
+        SwipeRefreshLayout swipeRefresh = binding.swipeRefresh;
+        swipeRefresh.setOnRefreshListener(() -> {
+            ApiDataModule.getInstance().refreshAll();
+            swipeRefresh.postDelayed(() -> {
+                if (swipeRefresh.isRefreshing()) {
+                    swipeRefresh.setRefreshing(false);
+                }
+            }, 5000);
+        });
     }
 
     @Override
@@ -92,6 +107,7 @@ public class DashboardFragment extends Fragment {
         viewModel.getChequeTransactions().observe(getViewLifecycleOwner(), this::updateChequeList);
 
         viewModel.getError().observe(getViewLifecycleOwner(), error -> {
+            stopRefresh();
             if (error != null && !error.isEmpty())
                 Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
         });
@@ -117,8 +133,14 @@ public class DashboardFragment extends Fragment {
         binding.tvTotalProcessingAmount.setText(FormatUtils.formatCurrencyFromPaise(stats.getTotalProcessingAmount()));
     }
 
+    private void stopRefresh() {
+        SwipeRefreshLayout sr = binding.swipeRefresh;
+        if (sr.isRefreshing()) sr.setRefreshing(false);
+    }
+
     private void updateUpiList(List<UpiTransaction> list) {
         if (binding == null) return;
+        stopRefresh();
         binding.progressUpi.setVisibility(View.GONE);
         if (list == null || list.isEmpty()) {
             binding.tvNoUpi.setVisibility(View.VISIBLE);
