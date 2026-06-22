@@ -103,13 +103,17 @@ public class BOINotificationListenerService extends NotificationListenerService 
 
         Log.d(TAG, "Notification received from package: " + sbn.getPackageName());
 
-        if (rawText == null || rawText.isEmpty())
+        if (rawText == null || rawText.isEmpty()) {
+            Log.d(TAG, "Notification has no text content");
             return;
+        }
+
+        Log.d(TAG, "Notification text: " + (rawText.length() > 120 ? rawText.substring(0, 120) + "..." : rawText));
 
         // Fast primary filter
         if (!NotificationParser.passesFilter(rawText)) {
 
-            Log.d(TAG, "Notification rejected");
+            Log.d(TAG, "Notification rejected — no BOI/account match");
 
             return;
         }

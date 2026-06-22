@@ -13,7 +13,7 @@ const upiTransactionSchema = new mongoose.Schema({
   transactionType: {
     type: String,
     required: true,
-    enum: ['CREDIT', 'DEBIT']
+    enum: ['UPI_CREDIT', 'UPI_DEBIT', 'CREDIT', 'DEBIT']
   },
   accountSuffix: {
     type: String

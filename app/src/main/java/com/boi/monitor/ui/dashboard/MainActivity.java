@@ -19,6 +19,7 @@ import android.widget.Toast;
 import com.boi.monitor.R;
 import com.boi.monitor.network.ApiClient;
 import com.boi.monitor.network.ApiDataModule;
+import com.boi.monitor.network.AuthManager;
 import com.boi.monitor.service.BOINotificationListenerService;
 import com.boi.monitor.ui.admin.AdminLoginActivity;
 import com.boi.monitor.util.Constants;
@@ -180,15 +181,36 @@ public class MainActivity extends AppCompatActivity {
                     if (!url.isEmpty()) {
                         prefs.setServerUrl(url);
                         ApiClient.getInstance().reconfigure();
-                        Toast.makeText(this, "Server URL updated. Reconnect to load data.", Toast.LENGTH_SHORT).show();
+                        AuthManager.getInstance().logout();
+                        retryAnonymousAuth();
                     }
                 })
                 .setNegativeButton("Reset Default", (d, w) -> {
                     prefs.setServerUrl(Constants.DEFAULT_BASE_URL);
                     ApiClient.getInstance().reconfigure();
-                    Toast.makeText(this, "Reset to default URL", Toast.LENGTH_SHORT).show();
+                    AuthManager.getInstance().logout();
+                    retryAnonymousAuth();
                 })
                 .show();
+    }
+
+    private void retryAnonymousAuth() {
+        Toast.makeText(this, "Reconnecting to server...", Toast.LENGTH_SHORT).show();
+        AuthManager.getInstance().anonymousAuth(new AuthManager.AuthCallback() {
+            @Override
+            public void onSuccess(String userId, String token) {
+                ApiDataModule dataModule = ApiDataModule.getInstance();
+                dataModule.onAuthReady();
+                dataModule.flushPendingQueue();
+                Toast.makeText(MainActivity.this, "Connected to server", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                Toast.makeText(MainActivity.this,
+                        "Server connect failed: " + errorMessage, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     // ── Privacy ─────────────────────────────────────────────────────────────────

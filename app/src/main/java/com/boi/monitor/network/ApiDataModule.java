@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -34,9 +36,6 @@ public class ApiDataModule {
 
     private static volatile ApiDataModule instance;
 
-    private final BoiApiService apiService;
-    private final AuthManager authManager;
-
     private final MutableLiveData<List<UpiTransaction>> upiTransactionsLive = new MutableLiveData<>();
     private final MutableLiveData<List<ChequeTransaction>> chequeTransactionsLive = new MutableLiveData<>();
     private final MutableLiveData<DashboardStats> dashboardStatsLive = new MutableLiveData<>();
@@ -47,10 +46,12 @@ public class ApiDataModule {
 
     private volatile boolean authReady = false;
     private boolean pendingRefresh = false;
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
 
-    private ApiDataModule() {
-        this.apiService = ApiClient.getInstance().getApiService();
-        this.authManager = AuthManager.getInstance();
+    private ApiDataModule() {}
+
+    private BoiApiService getApi() {
+        return ApiClient.getInstance().getApiService();
     }
 
     public void onAuthReady() {
@@ -94,7 +95,7 @@ public class ApiDataModule {
     }
 
     public void refreshUpiTransactions(int limit) {
-        apiService.getUpiTransactions(limit).enqueue(new Callback<List<UpiTransaction>>() {
+        getApi().getUpiTransactions(limit).enqueue(new Callback<List<UpiTransaction>>() {
             @Override
             public void onResponse(@NonNull Call<List<UpiTransaction>> call,
                                    @NonNull Response<List<UpiTransaction>> response) {
@@ -118,7 +119,7 @@ public class ApiDataModule {
     }
 
     public void refreshChequeTransactions(int limit) {
-        apiService.getChequeTransactions(limit).enqueue(new Callback<List<ChequeTransaction>>() {
+        getApi().getChequeTransactions(limit).enqueue(new Callback<List<ChequeTransaction>>() {
             @Override
             public void onResponse(@NonNull Call<List<ChequeTransaction>> call,
                                    @NonNull Response<List<ChequeTransaction>> response) {
@@ -145,7 +146,7 @@ public class ApiDataModule {
     // ── Save Operations ────────────────────────────────────────────────────────
 
     public void saveUpiTransaction(UpiTransaction tx) {
-        apiService.saveUpiTransaction(tx).enqueue(new Callback<Void>() {
+        getApi().saveUpiTransaction(tx).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
@@ -167,7 +168,7 @@ public class ApiDataModule {
     }
 
     public void saveChequeTransaction(ChequeTransaction tx) {
-        apiService.saveChequeTransaction(tx).enqueue(new Callback<Void>() {
+        getApi().saveChequeTransaction(tx).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
@@ -189,7 +190,7 @@ public class ApiDataModule {
     }
 
     public void saveLog(NotificationLog log) {
-        apiService.saveLog(log).enqueue(new Callback<Void>() {
+        getApi().saveLog(log).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
@@ -212,7 +213,7 @@ public class ApiDataModule {
 
     public void saveUpiTransactionSync(UpiTransaction tx) {
         try {
-            Response<Void> resp = apiService.saveUpiTransaction(tx).execute();
+            Response<Void> resp = getApi().saveUpiTransaction(tx).execute();
             if (resp.isSuccessful()) {
                 Log.i(TAG, "UPI transaction saved (sync retry)");
             }
@@ -223,7 +224,7 @@ public class ApiDataModule {
 
     public void saveChequeTransactionSync(ChequeTransaction tx) {
         try {
-            Response<Void> resp = apiService.saveChequeTransaction(tx).execute();
+            Response<Void> resp = getApi().saveChequeTransaction(tx).execute();
             if (resp.isSuccessful()) {
                 Log.i(TAG, "Cheque transaction saved (sync retry)");
             }
@@ -234,7 +235,7 @@ public class ApiDataModule {
 
     public void saveLogSync(NotificationLog log) {
         try {
-            Response<Void> resp = apiService.saveLog(log).execute();
+            Response<Void> resp = getApi().saveLog(log).execute();
             if (resp.isSuccessful()) {
                 Log.i(TAG, "Notification log saved (sync retry)");
             }
@@ -250,14 +251,16 @@ public class ApiDataModule {
             pendingRefresh = true;
             return;
         }
-        int flushed = PendingRequestQueue.getInstance(ApiClient.getInstance().getContext()).retryAll();
-        if (flushed > 0) {
-            Log.i(TAG, "Flushed " + flushed + " pending requests");
-        }
+        ioExecutor.submit(() -> {
+            int flushed = PendingRequestQueue.getInstance(ApiClient.getInstance().getContext()).retryAll();
+            if (flushed > 0) {
+                Log.i(TAG, "Flushed " + flushed + " pending requests");
+            }
+        });
     }
 
     public void getLogs(int limit, ApiCallback<List<NotificationLog>> callback) {
-        apiService.getLogs(limit).enqueue(new Callback<List<NotificationLog>>() {
+        getApi().getLogs(limit).enqueue(new Callback<List<NotificationLog>>() {
             @Override
             public void onResponse(@NonNull Call<List<NotificationLog>> call,
                                    @NonNull Response<List<NotificationLog>> response) {
@@ -323,7 +326,7 @@ public class ApiDataModule {
     // ── Delete ─────────────────────────────────────────────────────────────────
 
     public void deleteAllUserData() {
-        apiService.deleteAllData().enqueue(new Callback<Void>() {
+        getApi().deleteAllData().enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {

@@ -29,12 +29,14 @@ public class AuthManager {
 
     private static volatile AuthManager instance;
     private final SharedPreferences prefs;
-    private final BoiApiService apiService;
 
     private AuthManager(Context context) {
         this.prefs = context.getApplicationContext()
                 .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        this.apiService = ApiClient.getInstance(context).getApiService();
+    }
+
+    private BoiApiService getApi() {
+        return ApiClient.getInstance().getApiService();
     }
 
     public static AuthManager getInstance(Context context) {
@@ -63,7 +65,7 @@ public class AuthManager {
      */
     public void register(String email, String password, @NonNull AuthCallback callback) {
         RegisterRequest request = new RegisterRequest(email, password);
-        apiService.register(request).enqueue(new Callback<AuthResponse>() {
+        getApi().register(request).enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(@NonNull Call<AuthResponse> call,
                                    @NonNull Response<AuthResponse> response) {
@@ -92,7 +94,7 @@ public class AuthManager {
      */
     public void login(String email, String password, @NonNull AuthCallback callback) {
         LoginRequest request = new LoginRequest(email, password);
-        apiService.login(request).enqueue(new Callback<AuthResponse>() {
+        getApi().login(request).enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(@NonNull Call<AuthResponse> call,
                                    @NonNull Response<AuthResponse> response) {
@@ -120,7 +122,7 @@ public class AuthManager {
      * Authenticate anonymously using an API key. Used as default app auth state.
      */
     public void anonymousAuth(@NonNull AuthCallback callback) {
-        apiService.anonymousAuth(com.boi.monitor.util.Constants.API_KEY)
+        getApi().anonymousAuth(com.boi.monitor.util.Constants.API_KEY)
                 .enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(@NonNull Call<AuthResponse> call,

@@ -11,7 +11,7 @@ public final class Constants {
     private Constants() {}
 
     // ── REST API configuration ────────────────────────────────────────────────
-    public static final String DEFAULT_BASE_URL = "http://10.0.2.2:3001/";
+    public static final String DEFAULT_BASE_URL = "https://boi-monitor.onrender.com/";
     public static final String API_KEY  = "boi-monitor-api-key-a1b2c3d4e5";
 
     // ── Primary notification filter strings ────────────────────────────────────
