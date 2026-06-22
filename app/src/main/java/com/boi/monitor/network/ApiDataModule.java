@@ -151,6 +151,7 @@ public class ApiDataModule {
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
                     Log.i(TAG, "UPI transaction saved");
+                    refreshUpiTransactions(Constants.UPI_QUERY_LIMIT);
                 } else {
                     String error = parseError(response);
                     Log.e(TAG, "Failed to save UPI transaction: " + error);
@@ -173,6 +174,7 @@ public class ApiDataModule {
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
                     Log.i(TAG, "Cheque transaction saved");
+                    refreshChequeTransactions(Constants.CHEQUE_QUERY_LIMIT);
                 } else {
                     String error = parseError(response);
                     Log.e(TAG, "Failed to save cheque transaction: " + error);
