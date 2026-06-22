@@ -22,6 +22,7 @@ public class PrefsManager {
     private static final String KEY_ONBOARDED = "onboarded";
     private static final String KEY_LAST_SYNC = "last_sync_ts";
     private static final String KEY_SEEN_REFS = "seen_upi_refs";
+    private static final String KEY_SERVER_URL = "server_url";
 
     private static volatile PrefsManager instance;
     private final SharedPreferences prefs;
@@ -74,6 +75,16 @@ public class PrefsManager {
         Type type = new TypeToken<HashSet<String>>(){}.getType();
         Set<String> refs = gson.fromJson(json, type);
         return refs != null ? refs : new HashSet<>();
+    }
+
+    // ── Configurable Server URL ───────────────────────────────────────────────
+
+    public String getServerUrl() {
+        return prefs.getString(KEY_SERVER_URL, Constants.DEFAULT_BASE_URL);
+    }
+
+    public void setServerUrl(String url) {
+        prefs.edit().putString(KEY_SERVER_URL, url).apply();
     }
 
     // ── Generic helpers ────────────────────────────────────────────────────────

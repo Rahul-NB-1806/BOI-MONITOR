@@ -17,4 +17,9 @@
         android:title="Admin Panel"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_server_settings"
+        android:title="Server Settings"
+        app:showAsAction="never" />
+
 </menu>

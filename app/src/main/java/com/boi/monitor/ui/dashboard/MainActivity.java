@@ -7,6 +7,7 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.EditText;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -16,9 +17,11 @@ import androidx.fragment.app.FragmentTransaction;
 import android.widget.Toast;
 
 import com.boi.monitor.R;
-import com.boi.monitor.firebase.FirebaseDataModule;
+import com.boi.monitor.network.ApiClient;
+import com.boi.monitor.network.ApiDataModule;
 import com.boi.monitor.service.BOINotificationListenerService;
 import com.boi.monitor.ui.admin.AdminLoginActivity;
+import com.boi.monitor.util.Constants;
 import com.boi.monitor.util.PrefsManager;
 import com.boi.monitor.ui.cheque.ChequeManagementFragment;
 import com.boi.monitor.ui.upi.UpiTransactionFragment;
@@ -155,7 +158,37 @@ public class MainActivity extends AppCompatActivity {
             showPrivacyDialog();
             return true;
         }
+        if (item.getItemId() == R.id.action_server_settings) {
+            showServerUrlDialog();
+            return true;
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showServerUrlDialog() {
+        PrefsManager prefs = PrefsManager.getInstance(this);
+        EditText input = new EditText(this);
+        input.setText(prefs.getServerUrl());
+        input.setSelectAllOnFocus(true);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Server URL")
+                .setMessage("Enter the backend server URL (e.g. https://your-app.onrender.com)")
+                .setView(input)
+                .setPositiveButton("Save", (d, w) -> {
+                    String url = input.getText().toString().trim();
+                    if (!url.isEmpty()) {
+                        prefs.setServerUrl(url);
+                        ApiClient.getInstance().reconfigure();
+                        Toast.makeText(this, "Server URL updated. Reconnect to load data.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Reset Default", (d, w) -> {
+                    prefs.setServerUrl(Constants.DEFAULT_BASE_URL);
+                    ApiClient.getInstance().reconfigure();
+                    Toast.makeText(this, "Reset to default URL", Toast.LENGTH_SHORT).show();
+                })
+                .show();
     }
 
     // ── Privacy ─────────────────────────────────────────────────────────────────
@@ -204,15 +237,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteUserData() {
-        FirebaseDataModule.getInstance().deleteAllUserData()
-                .addOnSuccessListener(unused -> {
-                    Toast.makeText(this, "All your data has been deleted", Toast.LENGTH_SHORT).show();
-                    // restart listeners to reflect empty state
-                    FirebaseDataModule.getInstance().restartListening();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "Failed to delete data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                });
+        ApiDataModule.getInstance().deleteAllUserData();
+        Toast.makeText(this, "All your data has been deleted", Toast.LENGTH_SHORT).show();
     }
 
     private void showExportDataDialog() {

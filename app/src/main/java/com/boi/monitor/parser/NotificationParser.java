@@ -6,7 +6,6 @@ import com.boi.monitor.model.NotificationLog;
 import com.boi.monitor.model.ParsedNotification;
 import com.boi.monitor.model.ParsedNotification.NotificationType;
 import com.boi.monitor.util.Constants;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.util.Locale;
 
@@ -58,13 +57,40 @@ public class NotificationParser {
 
     private static final Pattern AMOUNT_CLEANUP = Pattern.compile("[,\\s]");
 
+    private static final Pattern ACCOUNT_NUMBER_IN_TEXT = Pattern.compile(
+            "a/c\\s+no\\.?\\s*([\\dX]+)", Pattern.CASE_INSENSITIVE
+    );
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     public static boolean passesFilter(String text) {
         if (text == null || text.isEmpty()) return false;
         String normalized = text.toUpperCase(Locale.ROOT);
-        return normalized.contains(Constants.FILTER_BOI_KEYWORD.toUpperCase(Locale.ROOT))
-                && normalized.contains(Constants.FILTER_ACCOUNT_SUFFIX.toUpperCase(Locale.ROOT));
+
+        // Must contain BOI keyword
+        if (!normalized.contains(Constants.FILTER_BOI_KEYWORD.toUpperCase(Locale.ROOT)))
+            return false;
+
+        // Check for account suffix match — supports both SMS ("XXXXXXXXXXX0004")
+        // and BOI app ("XXX004") masked formats
+        String suffix = Constants.FILTER_ACCOUNT_SUFFIX.toUpperCase(Locale.ROOT);
+
+        // Fast path: direct substring match (handles BOI app format like "XXX004")
+        if (normalized.contains(suffix)) return true;
+
+        // Flexible path: extract last actual digits from the suffix and search
+        // for any account number ending with them
+        String lastDigits = suffix.replaceAll("X", "");
+        if (lastDigits.length() < 3) return false;
+
+        Matcher m = ACCOUNT_NUMBER_IN_TEXT.matcher(normalized);
+        while (m.find()) {
+            String acct = m.group(1);
+            String acctLast = acct.replaceAll("X", "");
+            if (acctLast.endsWith(lastDigits)) return true;
+        }
+
+        return false;
     }
 
     public static ParsedNotification parse(String rawText) {
@@ -95,7 +121,6 @@ public class NotificationParser {
             return true;
         } catch (Exception e) {
             Log.w(TAG, "Parse failed for type: CHEQUE_CLEARED", e);
-            FirebaseCrashlytics.getInstance().recordException(new RuntimeException("Parse failed for type: CHEQUE_CLEARED"));
             return false;
         }
     }
@@ -112,7 +137,6 @@ public class NotificationParser {
             return true;
         } catch (Exception e) {
             Log.w(TAG, "Parse failed for type: CHEQUE_RETURNED", e);
-            FirebaseCrashlytics.getInstance().recordException(new RuntimeException("Parse failed for type: CHEQUE_RETURNED"));
             return false;
         }
     }
@@ -127,14 +151,17 @@ public class NotificationParser {
             return true;
         } catch (Exception e) {
             Log.w(TAG, "Parse failed for type: CHEQUE_PRESENTED", e);
-            FirebaseCrashlytics.getInstance().recordException(new RuntimeException("Parse failed for type: CHEQUE_PRESENTED"));
             return false;
         }
     }
 
     private static boolean tryParseUpiCredit(String text, ParsedNotification out) {
         Matcher m = PATTERN_UPI_CREDIT.matcher(text);
-        if (!m.find()) return false;
+        if (!m.find()) {
+            Log.d(TAG, "UPI credit regex didn't match. Raw text (first 200 chars): "
+                    + (text.length() > 200 ? text.substring(0, 200) : text));
+            return false;
+        }
         try {
             out.setType(NotificationType.UPI_CREDIT);
             String fullAccount = m.group(1).trim();
@@ -146,7 +173,6 @@ public class NotificationParser {
             return true;
         } catch (Exception e) {
             Log.w(TAG, "Parse failed for type: UPI_CREDIT", e);
-            FirebaseCrashlytics.getInstance().recordException(new RuntimeException("Parse failed for type: UPI_CREDIT"));
             return false;
         }
     }

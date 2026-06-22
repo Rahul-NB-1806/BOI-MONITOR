@@ -10,16 +10,20 @@ public final class Constants {
 
     private Constants() {}
 
+    // ── REST API configuration ────────────────────────────────────────────────
+    public static final String DEFAULT_BASE_URL = "http://10.0.2.2:3001/";
+    public static final String API_KEY  = "boi-monitor-api-key-a1b2c3d4e5";
+
     // ── Primary notification filter strings ────────────────────────────────────
     public static final String FILTER_BOI_KEYWORD     = "BOI";
     public static final String FILTER_ACCOUNT_SUFFIX  = "XXX004";
 
-    // ── Firestore collection names ─────────────────────────────────────────────
-    public static final String COL_CHEQUE_TRANSACTIONS = "cheque_transactions";
-    public static final String COL_UPI_TRANSACTIONS    = "upi_transactions";
-    public static final String COL_NOTIFICATION_LOGS   = "notification_logs";
-    public static final String COL_ADMIN_USERS         = "admin_users";
-    public static final String COL_APP_SETTINGS        = "app_settings";
+    // ── Firestore collection names (kept as reference, no longer used) ─────────
+    // public static final String COL_CHEQUE_TRANSACTIONS = "cheque_transactions";
+    // public static final String COL_UPI_TRANSACTIONS    = "upi_transactions";
+    // public static final String COL_NOTIFICATION_LOGS   = "notification_logs";
+    // public static final String COL_ADMIN_USERS         = "admin_users";
+    // public static final String COL_APP_SETTINGS        = "app_settings";
 
     // ── Cheque document ID prefix ─────────────────────────────────────────────
     public static final String CHEQUE_DOC_PREFIX = "CHQ_";

@@ -10,21 +10,14 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.boi.monitor.R;
 import com.boi.monitor.databinding.ActivityAdminLoginBinding;
-import com.boi.monitor.firebase.FirebaseAuthManager;
-import com.google.firebase.auth.FirebaseUser;
+import com.boi.monitor.network.AuthManager;
 
-/**
- * AdminLoginActivity
- *
- * Firebase-authenticated admin section entry point.
- * Hidden from normal users — accessible only via the overflow menu.
- */
 public class AdminLoginActivity extends AppCompatActivity {
 
     private static final String TAG = "AdminLogin";
 
     private ActivityAdminLoginBinding binding;
-    private FirebaseAuthManager       authManager;
+    private AuthManager authManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,11 +30,9 @@ public class AdminLoginActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        authManager = FirebaseAuthManager.getInstance();
+        authManager = AuthManager.getInstance(this);
 
-        // If already logged in as a non-anonymous (admin) user, go straight to panel
-        FirebaseUser currentUser = authManager.getCurrentUser();
-        if (currentUser != null && !currentUser.isAnonymous()) {
+        if (authManager.isLoggedIn() && !authManager.isAnonymous()) {
             goToAdminPanel();
             return;
         }
@@ -64,9 +55,9 @@ public class AdminLoginActivity extends AppCompatActivity {
 
         setLoading(true);
 
-        authManager.signIn(email, pass, new FirebaseAuthManager.AuthCallback() {
+        authManager.login(email, pass, new AuthManager.AuthCallback() {
             @Override
-            public void onSuccess(com.google.firebase.auth.FirebaseUser user) {
+            public void onSuccess(String userId, String token) {
                 setLoading(false);
                 goToAdminPanel();
             }

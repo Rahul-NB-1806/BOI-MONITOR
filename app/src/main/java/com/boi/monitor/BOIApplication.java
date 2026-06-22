@@ -9,17 +9,13 @@ import android.widget.Toast;
 
 import androidx.multidex.MultiDex;
 
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreSettings;
-
-import com.boi.monitor.firebase.FirebaseAuthManager;
+import com.boi.monitor.network.ApiClient;
+import com.boi.monitor.network.ApiDataModule;
+import com.boi.monitor.network.AuthManager;
 
 /**
  * BOI Monitor Application class.
- * Initializes Firebase and global app configurations.
+ * Initializes Retrofit/OkHttp networking and global app configurations.
  */
 public class BOIApplication extends Application {
 
@@ -36,9 +32,9 @@ public class BOIApplication extends Application {
         instance = this;
         MultiDex.install(this);
 
-        initFirebase();
-        createNotificationChannel();
+        initNetworking();
         initAnonymousAuth();
+        createNotificationChannel();
 
         Log.i(TAG, "BOI Monitor Application initialized");
     }
@@ -48,32 +44,35 @@ public class BOIApplication extends Application {
     }
 
     /**
-     * Initialize Firebase with offline persistence enabled.
+     * Initialize Retrofit/OkHttp API client and AuthManager.
      */
-    private void initFirebase() {
-        FirebaseApp.initializeApp(this);
-
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true);
-
-        FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
-                .setPersistenceEnabled(true)
-                .setCacheSizeBytes(FirebaseFirestoreSettings.CACHE_SIZE_UNLIMITED)
-                .build();
-
-        FirebaseFirestore.getInstance().setFirestoreSettings(settings);
-        Log.i(TAG, "Firebase initialized with offline persistence");
+    private void initNetworking() {
+        ApiClient.getInstance(this);
+        AuthManager.getInstance(this);
+        Log.i(TAG, "Retrofit networking initialized");
     }
 
     /**
-     * Sign in anonymously so the app always has an authenticated user
-     * before performing Firestore operations.
+     * Authenticate anonymously via the REST API so the app always has
+     * an active session before performing data operations.
      */
     private void initAnonymousAuth() {
-        FirebaseAuthManager.getInstance().signInAnonymously(new FirebaseAuthManager.AuthCallback() {
+        AuthManager authManager = AuthManager.getInstance();
+        if (authManager.isLoggedIn()) {
+            Log.i(TAG, "Already authenticated: userId=" + authManager.getUserId());
+            ApiDataModule dataModule = ApiDataModule.getInstance();
+            dataModule.onAuthReady();
+            dataModule.flushPendingQueue();
+            return;
+        }
+
+        authManager.anonymousAuth(new AuthManager.AuthCallback() {
             @Override
-            public void onSuccess(FirebaseUser user) {
-                Log.i(TAG, "Anonymous auth established: " + user.getUid());
-                FirebaseCrashlytics.getInstance().setUserId(user.getUid());
+            public void onSuccess(String userId, String token) {
+                Log.i(TAG, "Anonymous auth established: " + userId);
+                ApiDataModule dataModule = ApiDataModule.getInstance();
+                dataModule.onAuthReady();
+                dataModule.flushPendingQueue();
             }
 
             @Override

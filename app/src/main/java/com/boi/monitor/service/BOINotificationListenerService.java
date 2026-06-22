@@ -14,13 +14,12 @@ import androidx.core.app.NotificationCompat;
 
 import com.boi.monitor.BOIApplication;
 import com.boi.monitor.R;
-import com.boi.monitor.firebase.FirebaseDataModule;
+import com.boi.monitor.network.ApiDataModule;
 import com.boi.monitor.model.ParsedNotification;
 import com.boi.monitor.parser.NotificationParser;
 import com.boi.monitor.ui.dashboard.MainActivity;
 import com.boi.monitor.util.PrefsManager;
 import com.boi.monitor.voice.VoiceEngine;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -166,7 +165,7 @@ public class BOINotificationListenerService extends NotificationListenerService 
                 Log.w(TAG, "Notification passed filter but no pattern matched");
 
                 // Save unrecognized logs too
-                FirebaseDataModule.getInstance().saveNotification(parsed);
+                ApiDataModule.getInstance().saveNotification(parsed);
 
                 return;
             }
@@ -196,18 +195,21 @@ public class BOINotificationListenerService extends NotificationListenerService 
                 }
             }
 
-            // ── Save to Firebase ─────────────────────────────
-
-            Log.d(TAG, "Saving notification to Firebase");
-
-            FirebaseDataModule.getInstance().saveNotification(parsed);
-
             // ── Voice Announcement ───────────────────────────
 
             if (parsed.isUpiCredit()) {
                 VoiceEngine.getInstance()
                         .announceUpiCredit(parsed.getAmount());
             }
+
+            // ── Save to API ──────────────────────────────────
+
+            Log.d(TAG, "Saving notification via API");
+
+            ApiDataModule.getInstance().saveNotification(parsed);
+
+            // Try to flush any previously queued requests
+            ApiDataModule.getInstance().flushPendingQueue();
 
             Log.i(TAG, "Successfully processed notification type: " + parsed.getType());
 
@@ -216,9 +218,6 @@ public class BOINotificationListenerService extends NotificationListenerService 
             Log.e(TAG,
                     "Unexpected error processing notification",
                     e);
-            FirebaseCrashlytics.getInstance().recordException(
-                    new RuntimeException("Notification processing failed for type: "
-                            + (parsed != null ? parsed.getType() : "unknown"), e));
         }
     }
 
@@ -343,6 +342,10 @@ public class BOINotificationListenerService extends NotificationListenerService 
                         .setCategory(NotificationCompat.CATEGORY_SERVICE)
                         .build();
 
-        startForeground(FOREGROUND_ID, notification);
+        try {
+            startForeground(FOREGROUND_ID, notification);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start foreground service", e);
+        }
     }
 }

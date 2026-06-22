@@ -11,22 +11,19 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.boi.monitor.R;
 import com.boi.monitor.databinding.ActivityAdminPanelBinding;
-import com.boi.monitor.firebase.FirebaseAuthManager;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.boi.monitor.network.ApiClient;
+import com.boi.monitor.network.AuthManager;
+import com.boi.monitor.network.BoiApiService;
 
-/**
- * AdminPanelActivity
- *
- * Authenticated admin section showing notification processing stats and app settings.
- * Accessible only after PIN + Firebase auth.
- */
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class AdminPanelActivity extends AppCompatActivity {
 
     private ActivityAdminPanelBinding binding;
-    private FirebaseFirestore          db;
+    private AuthManager authManager;
+    private BoiApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,34 +36,41 @@ public class AdminPanelActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        db = FirebaseFirestore.getInstance();
+        authManager = AuthManager.getInstance(this);
+        apiService = ApiClient.getInstance(this).getApiService();
         loadStats();
         binding.btnRefresh.setOnClickListener(v -> loadStats());
     }
 
     private void loadStats() {
-        // Notification logs count across all users (admin privilege)
-        db.collectionGroup("notification_logs").get()
-          .addOnSuccessListener(qs -> {
-              int total     = qs.size();
-              int processed = 0;
-              for (QueryDocumentSnapshot doc : qs) {
-                  Boolean p = doc.getBoolean("processed");
-                  if (Boolean.TRUE.equals(p)) processed++;
-              }
-              binding.tvLogCount.setText("Total logs: " + total);
-              binding.tvProcessedCount.setText("Processed: " + processed);
-              binding.tvUnprocessedCount.setText("Unprocessed: " + (total - processed));
-          })
-          .addOnFailureListener(e ->
-              Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        String authToken = "Bearer " + authManager.getToken();
 
-        // App version / info
+        apiService.getAdminStats().enqueue(new Callback<com.boi.monitor.model.DashboardStats>() {
+            @Override
+            public void onResponse(Call<com.boi.monitor.model.DashboardStats> call,
+                                   Response<com.boi.monitor.model.DashboardStats> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    com.boi.monitor.model.DashboardStats stats = response.body();
+                    binding.tvLogCount.setText("Total logs: " + stats.getTotalLogCount());
+                    binding.tvProcessedCount.setText("Processed: " + stats.getProcessedLogCount());
+                    binding.tvUnprocessedCount.setText("Unprocessed: " + stats.getUnprocessedLogCount());
+                } else {
+                    binding.tvLogCount.setText("Total logs: --");
+                    binding.tvProcessedCount.setText("Processed: --");
+                    binding.tvUnprocessedCount.setText("Unprocessed: --");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<com.boi.monitor.model.DashboardStats> call, Throwable t) {
+                Toast.makeText(AdminPanelActivity.this,
+                        "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+
         binding.tvAppVersion.setText("BOI Monitor v1.0.0 — Production Prototype");
         binding.tvAdminUser.setText("Logged in as: " +
-            (FirebaseAuth.getInstance().getCurrentUser() != null
-             ? FirebaseAuth.getInstance().getCurrentUser().getEmail()
-             : "Unknown"));
+            (authManager.isLoggedIn() ? authManager.getUserId() : "Unknown"));
     }
 
     @Override
@@ -82,19 +86,7 @@ public class AdminPanelActivity extends AppCompatActivity {
                 .setTitle("Sign Out")
                 .setMessage("Sign out of admin panel?")
                 .setPositiveButton("Sign Out", (d, w) -> {
-                    FirebaseAuth.getInstance().signOut();
-                    // Re-establish anonymous auth for notification monitoring
-                    FirebaseAuthManager.getInstance().signInAnonymously(new FirebaseAuthManager.AuthCallback() {
-                        @Override
-                        public void onSuccess(FirebaseUser user) {
-                            Log.i("AdminPanel", "Anonymous auth re-established: " + user.getUid());
-                        }
-
-                        @Override
-                        public void onFailure(String errorMessage) {
-                            Log.e("AdminPanel", "Anonymous re-auth failed: " + errorMessage);
-                        }
-                    });
+                    authManager.logout();
                     finish();
                 })
                 .setNegativeButton("Cancel", null)

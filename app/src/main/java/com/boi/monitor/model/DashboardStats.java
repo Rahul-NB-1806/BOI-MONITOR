@@ -1,24 +1,20 @@
 package com.boi.monitor.model;
 
-/**
- * Aggregated dashboard statistics shown on the main screen.
- */
 public class DashboardStats {
 
     private long totalUpiReceived;
     private long totalClearedAmount;
     private long totalReturnedAmount;
     private long totalProcessingAmount;
-    private int    totalPresentedCount;
-    private int    totalClearedCount;
-    private int    totalReturnedCount;
-    private int    totalUpiCount;
+    private int totalPresentedCount;
+    private int totalClearedCount;
+    private int totalReturnedCount;
+    private int totalUpiCount;
+    private int totalLogCount;
+    private int processedLogCount;
+    private int unprocessedLogCount;
 
-    public DashboardStats() {
-        // defaults all zero
-    }
-
-    // ── Getters / Setters ────────────────────────────────────────────────────
+    public DashboardStats() {}
 
     public long getTotalUpiReceived()     { return totalUpiReceived; }
     public void setTotalUpiReceived(long v){ this.totalUpiReceived = v; }
@@ -43,4 +39,13 @@ public class DashboardStats {
 
     public int getTotalUpiCount()           { return totalUpiCount; }
     public void setTotalUpiCount(int v)     { this.totalUpiCount = v; }
+
+    public int getTotalLogCount()           { return totalLogCount; }
+    public void setTotalLogCount(int v)     { this.totalLogCount = v; }
+
+    public int getProcessedLogCount()       { return processedLogCount; }
+    public void setProcessedLogCount(int v) { this.processedLogCount = v; }
+
+    public int getUnprocessedLogCount()     { return unprocessedLogCount; }
+    public void setUnprocessedLogCount(int v){ this.unprocessedLogCount = v; }
 }

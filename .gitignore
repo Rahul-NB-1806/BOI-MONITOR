@@ -1,8 +1,8 @@
+# ── Android / Gradle ──────────────────────────────────────────
 *.iml
 .gradle
 /local.properties
 /.idea
-.DS_Store
 build/
 /captures
 .externalNativeBuild
@@ -16,11 +16,31 @@ bin/
 gen/
 out/
 .navigation/
+local.properties
+
+# ── Server (Node.js) ──────────────────────────────────────────
+server/node_modules/
+server/.env
+
+# ── Scripts ───────────────────────────────────────────────────
+scripts/node_modules/
+scripts/.env
+
+# ── IDE / Editor ──────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs / Temp ───────────────────────────────────────────────
 *.log
 *.hprof
 *.trace
 *.pid
 *.sha1
-local.properties
-app/google-services.json
-{app/
+/tmp
+plans.md
