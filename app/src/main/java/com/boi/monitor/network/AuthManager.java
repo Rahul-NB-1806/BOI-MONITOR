@@ -6,6 +6,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import java.io.IOException;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -122,7 +124,9 @@ public class AuthManager {
      * Authenticate anonymously using an API key. Used as default app auth state.
      */
     public void anonymousAuth(@NonNull AuthCallback callback) {
-        getApi().anonymousAuth(com.boi.monitor.util.Constants.API_KEY)
+        String cachedUserId = getUserId();
+        AnonymousAuthRequest body = new AnonymousAuthRequest(cachedUserId);
+        getApi().anonymousAuth(com.boi.monitor.util.Constants.API_KEY, body)
                 .enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(@NonNull Call<AuthResponse> call,
@@ -145,6 +149,29 @@ public class AuthManager {
                 callback.onFailure(t.getMessage());
             }
         });
+    }
+
+    /**
+     * Synchronous anonymous auth for use in OkHttp interceptors.
+     * Returns the AuthResponse or throws IOException on failure.
+     */
+    public AuthResponse anonymousAuthSync() throws IOException {
+        Log.d(TAG, "[anonymousAuthSync] Starting synchronous anonymous auth");
+        String cachedUserId = getUserId();
+        AnonymousAuthRequest body = new AnonymousAuthRequest(cachedUserId);
+        Response<AuthResponse> response = getApi()
+                .anonymousAuth(com.boi.monitor.util.Constants.API_KEY, body)
+                .execute();
+        if (response.isSuccessful() && response.body() != null) {
+            AuthResponse authResponse = response.body();
+            saveAuthState(authResponse.getToken(), authResponse.getUserId(), true);
+            Log.i(TAG, "[anonymousAuthSync] Auth success: userId=" + authResponse.getUserId());
+            return authResponse;
+        } else {
+            String error = parseError(response);
+            Log.e(TAG, "[anonymousAuthSync] Auth failed: " + error);
+            throw new IOException("Anonymous auth failed: " + error);
+        }
     }
 
     /**

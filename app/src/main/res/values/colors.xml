@@ -30,6 +30,15 @@
     <color name="text_secondary">#5A6B7D</color>
     <color name="text_tertiary">#8FA3B8</color>
 
+    <!-- Warning / Storage -->
+    <color name="warning_amber">#F59E0B</color>
+    <color name="warning_red">#DC2626</color>
+    <color name="progress_green">#1A7A40</color>
+    <color name="progress_amber">#F59E0B</color>
+    <color name="progress_red">#DC2626</color>
+    <color name="banner_amber_bg">#FEF3C7</color>
+    <color name="banner_red_bg">#FEE2E2</color>
+
     <!-- Utility -->
     <color name="white">#FFFFFF</color>
     <color name="white_70">#B3FFFFFF</color>

@@ -55,6 +55,11 @@
             android:name=".ui.admin.AdminPanelActivity"
             android:exported="false" />
 
+        <!-- Storage Control Activity -->
+        <activity
+            android:name=".ui.storage.StorageControlActivity"
+            android:exported="false" />
+
         <!-- Notification Listener Service -->
         <service
             android:name=".service.BOINotificationListenerService"

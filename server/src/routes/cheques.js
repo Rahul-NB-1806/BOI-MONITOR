@@ -52,4 +52,40 @@ router.post('/', [
   }
 });
 
+router.delete('/', async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const result = await chequeService.deleteAll(userId);
+    res.json({ message: 'All cheque transactions deleted', deletedCount: result.deletedCount });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/older-than', async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { days, date } = req.body;
+
+    let cutoffDate;
+    if (date) {
+      cutoffDate = new Date(date);
+    } else if (days) {
+      cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - parseInt(days, 10));
+    } else {
+      return res.status(400).json({ error: 'Provide either days or date' });
+    }
+
+    if (isNaN(cutoffDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date' });
+    }
+
+    const result = await chequeService.deleteOlderThan(userId, cutoffDate);
+    res.json({ message: 'Old cheque transactions deleted', deletedCount: result.deletedCount });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

@@ -3,6 +3,7 @@ package com.boi.monitor.network;
 import com.boi.monitor.model.ChequeTransaction;
 import com.boi.monitor.model.DashboardStats;
 import com.boi.monitor.model.NotificationLog;
+import com.boi.monitor.model.StorageStats;
 import com.boi.monitor.model.UpiTransaction;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public interface BoiApiService {
     Call<AuthResponse> login(@Body LoginRequest request);
 
     @POST("api/auth/anonymous")
-    Call<AuthResponse> anonymousAuth(@Header("X-API-Key") String apiKey);
+    Call<AuthResponse> anonymousAuth(@Header("X-API-Key") String apiKey, @Body AnonymousAuthRequest request);
 
     // ── UPI Transactions ──────────────────────────────────────────────────────
 
@@ -54,6 +55,29 @@ public interface BoiApiService {
 
     @POST("api/logs")
     Call<Void> saveLog(@Body NotificationLog log);
+
+    // ── Storage / Delete ──────────────────────────────────────────────────────
+
+    @GET("api/storage/stats")
+    Call<StorageStats> getStorageStats();
+
+    @DELETE("api/upi")
+    Call<Void> deleteAllUpi();
+
+    @DELETE("api/upi/older-than")
+    Call<Void> deleteUpiOlderThan(@Body DeleteRequest request);
+
+    @DELETE("api/cheques")
+    Call<Void> deleteAllCheques();
+
+    @DELETE("api/cheques/older-than")
+    Call<Void> deleteChequesOlderThan(@Body DeleteRequest request);
+
+    @DELETE("api/logs")
+    Call<Void> deleteAllLogs();
+
+    @DELETE("api/logs/older-than")
+    Call<Void> deleteLogsOlderThan(@Body DeleteRequest request);
 
     // ── User Data ─────────────────────────────────────────────────────────────
 

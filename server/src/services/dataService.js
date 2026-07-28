@@ -54,6 +54,18 @@ const upiService = {
   async create(data) {
     const tx = new UpiTransaction(data);
     return await tx.save();
+  },
+
+  async deleteAll(userId) {
+    return await UpiTransaction.deleteMany({ userId });
+  },
+
+  async deleteOlderThan(userId, cutoffDate) {
+    return await UpiTransaction.deleteMany({ userId, timestamp: { $lt: cutoffDate } });
+  },
+
+  async count(userId) {
+    return await UpiTransaction.countDocuments({ userId });
   }
 };
 
@@ -73,6 +85,18 @@ const chequeService = {
       { $set: { ...data, chequeNumber: cleanNum } },
       { upsert: true, new: true }
     ).lean();
+  },
+
+  async deleteAll(userId) {
+    return await ChequeTransaction.deleteMany({ userId });
+  },
+
+  async deleteOlderThan(userId, cutoffDate) {
+    return await ChequeTransaction.deleteMany({ userId, timestamp: { $lt: cutoffDate } });
+  },
+
+  async count(userId) {
+    return await ChequeTransaction.countDocuments({ userId });
   }
 };
 
@@ -87,6 +111,18 @@ const logService = {
   async create(data) {
     const log = new NotificationLog(data);
     return await log.save();
+  },
+
+  async deleteAll(userId) {
+    return await NotificationLog.deleteMany({ userId });
+  },
+
+  async deleteOlderThan(userId, cutoffDate) {
+    return await NotificationLog.deleteMany({ userId, timestamp: { $lt: cutoffDate } });
+  },
+
+  async count(userId) {
+    return await NotificationLog.countDocuments({ userId });
   }
 };
 

@@ -11,6 +11,7 @@ import com.boi.monitor.model.ChequeTransaction;
 import com.boi.monitor.model.DashboardStats;
 import com.boi.monitor.model.NotificationLog;
 import com.boi.monitor.model.ParsedNotification;
+import com.boi.monitor.model.StorageStats;
 import com.boi.monitor.model.UpiTransaction;
 import com.boi.monitor.util.Constants;
 
@@ -55,6 +56,7 @@ public class ApiDataModule {
     }
 
     public void onAuthReady() {
+        Log.d(TAG, "[onAuthReady] Auth ready, pendingRefresh=" + pendingRefresh);
         authReady = true;
         flushPendingQueue();
         if (pendingRefresh) {
@@ -86,7 +88,9 @@ public class ApiDataModule {
      * Data loading is deferred until anonymous auth completes.
      */
     public void refreshAll() {
+        Log.d(TAG, "[refreshAll] Refreshing all data, authReady=" + authReady);
         if (!authReady) {
+            Log.d(TAG, "[refreshAll] Deferring until authReady");
             pendingRefresh = true;
             return;
         }
@@ -95,6 +99,7 @@ public class ApiDataModule {
     }
 
     public void refreshUpiTransactions(int limit) {
+        Log.d(TAG, "[refreshUpiTransactions] Fetching up to " + limit + " UPI transactions");
         getApi().getUpiTransactions(limit).enqueue(new Callback<List<UpiTransaction>>() {
             @Override
             public void onResponse(@NonNull Call<List<UpiTransaction>> call,
@@ -102,23 +107,26 @@ public class ApiDataModule {
                 if (response.isSuccessful() && response.body() != null) {
                     latestUpiList = response.body();
                     upiTransactionsLive.postValue(latestUpiList);
+                    Log.i(TAG, "[refreshUpiTransactions] Loaded " + latestUpiList.size() + " transactions");
                     recomputeStats(latestUpiList, latestChequeList);
                 } else {
                     String error = parseError(response);
-                    Log.e(TAG, "Failed to load UPI transactions: " + error);
+                    Log.e(TAG, "[refreshUpiTransactions] FAILED: " + response.code() + " " + error);
                     errorLive.postValue("UPI load failed: " + error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<List<UpiTransaction>> call, @NonNull Throwable t) {
-                Log.e(TAG, "UPI transactions network error", t);
+                Log.e(TAG, "[refreshUpiTransactions] NETWORK ERROR: " + t.getClass().getSimpleName()
+                        + ": " + t.getMessage(), t);
                 errorLive.postValue("UPI load failed: " + t.getMessage());
             }
         });
     }
 
     public void refreshChequeTransactions(int limit) {
+        Log.d(TAG, "[refreshChequeTransactions] Fetching up to " + limit + " cheque transactions");
         getApi().getChequeTransactions(limit).enqueue(new Callback<List<ChequeTransaction>>() {
             @Override
             public void onResponse(@NonNull Call<List<ChequeTransaction>> call,
@@ -127,17 +135,20 @@ public class ApiDataModule {
                     List<ChequeTransaction> deduped = deduplicateCheques(response.body());
                     latestChequeList = deduped;
                     chequeTransactionsLive.postValue(latestChequeList);
+                    Log.i(TAG, "[refreshChequeTransactions] Loaded " + response.body().size()
+                            + " cheques, deduped to " + latestChequeList.size());
                     recomputeStats(latestUpiList, latestChequeList);
                 } else {
                     String error = parseError(response);
-                    Log.e(TAG, "Failed to load cheque transactions: " + error);
+                    Log.e(TAG, "[refreshChequeTransactions] FAILED: " + response.code() + " " + error);
                     errorLive.postValue("Cheque load failed: " + error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<List<ChequeTransaction>> call, @NonNull Throwable t) {
-                Log.e(TAG, "Cheque transactions network error", t);
+                Log.e(TAG, "[refreshChequeTransactions] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
                 errorLive.postValue("Cheque load failed: " + t.getMessage());
             }
         });
@@ -146,22 +157,25 @@ public class ApiDataModule {
     // ── Save Operations ────────────────────────────────────────────────────────
 
     public void saveUpiTransaction(UpiTransaction tx) {
+        Log.d(TAG, "[saveUpiTransaction] Saving UPI transaction, amount="
+                + tx.getAmount() + ", ref=" + tx.getReferenceNumber());
         getApi().saveUpiTransaction(tx).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Log.i(TAG, "UPI transaction saved");
+                    Log.i(TAG, "[saveUpiTransaction] Saved successfully, refreshing");
                     refreshUpiTransactions(Constants.UPI_QUERY_LIMIT);
                 } else {
                     String error = parseError(response);
-                    Log.e(TAG, "Failed to save UPI transaction: " + error);
+                    Log.e(TAG, "[saveUpiTransaction] FAILED: " + response.code() + " " + error);
                     errorLive.postValue("UPI save failed: " + error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
-                Log.e(TAG, "UPI save network error, queuing for retry", t);
+                Log.e(TAG, "[saveUpiTransaction] NETWORK ERROR: " + t.getClass().getSimpleName()
+                        + ": " + t.getMessage(), t);
                 errorLive.postValue("UPI save failed: " + t.getMessage());
                 PendingRequestQueue.getInstance(ApiClient.getInstance().getContext()).enqueueUpi(tx);
             }
@@ -169,22 +183,25 @@ public class ApiDataModule {
     }
 
     public void saveChequeTransaction(ChequeTransaction tx) {
+        Log.d(TAG, "[saveChequeTransaction] Saving cheque, chequeNo="
+                + tx.getChequeNumber() + ", amount=" + tx.getAmount());
         getApi().saveChequeTransaction(tx).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Log.i(TAG, "Cheque transaction saved");
+                    Log.i(TAG, "[saveChequeTransaction] Saved successfully, refreshing");
                     refreshChequeTransactions(Constants.CHEQUE_QUERY_LIMIT);
                 } else {
                     String error = parseError(response);
-                    Log.e(TAG, "Failed to save cheque transaction: " + error);
+                    Log.e(TAG, "[saveChequeTransaction] FAILED: " + response.code() + " " + error);
                     errorLive.postValue("Cheque save failed: " + error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
-                Log.e(TAG, "Cheque save network error, queuing for retry", t);
+                Log.e(TAG, "[saveChequeTransaction] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
                 errorLive.postValue("Cheque save failed: " + t.getMessage());
                 PendingRequestQueue.getInstance(ApiClient.getInstance().getContext()).enqueueCheque(tx);
             }
@@ -192,20 +209,22 @@ public class ApiDataModule {
     }
 
     public void saveLog(NotificationLog log) {
+        Log.d(TAG, "[saveLog] Saving notification log, type=" + log.getNotificationType());
         getApi().saveLog(log).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Log.i(TAG, "Notification log saved");
+                    Log.i(TAG, "[saveLog] Saved successfully");
                 } else {
                     String error = parseError(response);
-                    Log.e(TAG, "Failed to save log: " + error);
+                    Log.e(TAG, "[saveLog] FAILED: " + response.code() + " " + error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
-                Log.e(TAG, "Log save network error, queuing for retry", t);
+                Log.e(TAG, "[saveLog] NETWORK ERROR: " + t.getClass().getSimpleName()
+                        + ": " + t.getMessage(), t);
                 PendingRequestQueue.getInstance(ApiClient.getInstance().getContext()).enqueueLog(log);
             }
         });
@@ -250,31 +269,38 @@ public class ApiDataModule {
 
     public void flushPendingQueue() {
         if (!authReady) {
+            Log.d(TAG, "[flushPendingQueue] Auth not ready, marking pending");
             pendingRefresh = true;
             return;
         }
         ioExecutor.submit(() -> {
             int flushed = PendingRequestQueue.getInstance(ApiClient.getInstance().getContext()).retryAll();
             if (flushed > 0) {
-                Log.i(TAG, "Flushed " + flushed + " pending requests");
+                Log.i(TAG, "[flushPendingQueue] Flushed " + flushed + " pending requests");
             }
         });
     }
 
     public void getLogs(int limit, ApiCallback<List<NotificationLog>> callback) {
+        Log.d(TAG, "[getLogs] Fetching up to " + limit + " logs");
         getApi().getLogs(limit).enqueue(new Callback<List<NotificationLog>>() {
             @Override
             public void onResponse(@NonNull Call<List<NotificationLog>> call,
                                    @NonNull Response<List<NotificationLog>> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    Log.i(TAG, "[getLogs] Loaded " + response.body().size() + " logs");
                     callback.onSuccess(response.body());
                 } else {
-                    callback.onFailure(parseError(response));
+                    String error = parseError(response);
+                    Log.e(TAG, "[getLogs] FAILED: " + response.code() + " " + error);
+                    callback.onFailure(error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<List<NotificationLog>> call, @NonNull Throwable t) {
+                Log.e(TAG, "[getLogs] NETWORK ERROR: " + t.getClass().getSimpleName()
+                        + ": " + t.getMessage(), t);
                 callback.onFailure(t.getMessage());
             }
         });
@@ -283,7 +309,13 @@ public class ApiDataModule {
     // ── Notification Processing ─────────────────────────────────────────────────
 
     public void saveNotification(ParsedNotification parsed) {
-        if (parsed == null) return;
+        if (parsed == null) {
+            Log.w(TAG, "[saveNotification] Skipped: null notification");
+            return;
+        }
+
+        Log.d(TAG, "[saveNotification] Processing type=" + parsed.getType()
+                + ", amount=" + parsed.getAmount());
 
         if (parsed.isUpiCredit()) {
             UpiTransaction tx = new UpiTransaction(
@@ -328,11 +360,12 @@ public class ApiDataModule {
     // ── Delete ─────────────────────────────────────────────────────────────────
 
     public void deleteAllUserData() {
+        Log.w(TAG, "[deleteAllUserData] Deleting all user data");
         getApi().deleteAllData().enqueue(new Callback<Void>() {
             @Override
             public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
                 if (response.isSuccessful()) {
-                    Log.i(TAG, "All user data deleted");
+                    Log.i(TAG, "[deleteAllUserData] All data deleted successfully");
                     latestUpiList = new ArrayList<>();
                     latestChequeList = new ArrayList<>();
                     upiTransactionsLive.postValue(latestUpiList);
@@ -340,15 +373,218 @@ public class ApiDataModule {
                     recomputeStats(latestUpiList, latestChequeList);
                 } else {
                     String error = parseError(response);
-                    Log.e(TAG, "Failed to delete user data: " + error);
+                    Log.e(TAG, "[deleteAllUserData] FAILED: " + response.code() + " " + error);
                     errorLive.postValue("Delete failed: " + error);
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
-                Log.e(TAG, "Delete network error", t);
+                Log.e(TAG, "[deleteAllUserData] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
                 errorLive.postValue("Delete failed: " + t.getMessage());
+            }
+        });
+    }
+
+    // ── Storage Stats ──────────────────────────────────────────────────────────
+
+    public void getStorageStats(ApiCallback<StorageStats> callback) {
+        Log.d(TAG, "[getStorageStats] Fetching storage stats");
+        getApi().getStorageStats().enqueue(new Callback<StorageStats>() {
+            @Override
+            public void onResponse(@NonNull Call<StorageStats> call, @NonNull Response<StorageStats> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    Log.i(TAG, "[getStorageStats] Success");
+                    callback.onSuccess(response.body());
+                } else {
+                    String error = parseError(response);
+                    Log.e(TAG, "[getStorageStats] FAILED: " + response.code() + " " + error);
+                    callback.onFailure(error);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<StorageStats> call, @NonNull Throwable t) {
+                Log.e(TAG, "[getStorageStats] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    // ── Category Delete ────────────────────────────────────────────────────────
+
+    public void deleteAllUpi(ApiCallback<Integer> callback) {
+        Log.w(TAG, "[deleteAllUpi] Deleting all UPI transactions");
+        getApi().deleteAllUpi().enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.i(TAG, "[deleteAllUpi] Deleted successfully");
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                Log.e(TAG, "[deleteAllUpi] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteAllCheques(ApiCallback<Integer> callback) {
+        Log.w(TAG, "[deleteAllCheques] Deleting all cheque transactions");
+        getApi().deleteAllCheques().enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.i(TAG, "[deleteAllCheques] Deleted successfully");
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                Log.e(TAG, "[deleteAllCheques] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteAllLogs(ApiCallback<Integer> callback) {
+        Log.w(TAG, "[deleteAllLogs] Deleting all logs");
+        getApi().deleteAllLogs().enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Log.i(TAG, "[deleteAllLogs] Deleted successfully");
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                Log.e(TAG, "[deleteAllLogs] NETWORK ERROR: "
+                        + t.getClass().getSimpleName() + ": " + t.getMessage(), t);
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteUpiOlderThan(int days, ApiCallback<Integer> callback) {
+        getApi().deleteUpiOlderThan(new DeleteRequest(days)).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteUpiOlderThanDate(String date, ApiCallback<Integer> callback) {
+        getApi().deleteUpiOlderThan(new DeleteRequest(date)).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteChequesOlderThan(int days, ApiCallback<Integer> callback) {
+        getApi().deleteChequesOlderThan(new DeleteRequest(days)).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteChequesOlderThanDate(String date, ApiCallback<Integer> callback) {
+        getApi().deleteChequesOlderThan(new DeleteRequest(date)).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteLogsOlderThan(int days, ApiCallback<Integer> callback) {
+        getApi().deleteLogsOlderThan(new DeleteRequest(days)).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                callback.onFailure(t.getMessage());
+            }
+        });
+    }
+
+    public void deleteLogsOlderThanDate(String date, ApiCallback<Integer> callback) {
+        getApi().deleteLogsOlderThan(new DeleteRequest(date)).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(@NonNull Call<Void> call, @NonNull Response<Void> response) {
+                if (response.isSuccessful()) {
+                    callback.onSuccess(0);
+                } else {
+                    callback.onFailure(parseError(response));
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
+                callback.onFailure(t.getMessage());
             }
         });
     }

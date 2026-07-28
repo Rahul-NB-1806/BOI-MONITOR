@@ -22,4 +22,9 @@
         android:title="Server Settings"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_clear_data"
+        android:title="Clear Data"
+        app:showAsAction="never" />
+
 </menu>

@@ -22,9 +22,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class ApiClient {
 
     private static final String TAG = "ApiClient";
-    private static final long CONNECT_TIMEOUT_SECONDS = 30;
-    private static final long READ_TIMEOUT_SECONDS = 30;
-    private static final long WRITE_TIMEOUT_SECONDS = 30;
+    private static final long CONNECT_TIMEOUT_SECONDS = 90;
+    private static final long READ_TIMEOUT_SECONDS = 90;
+    private static final long WRITE_TIMEOUT_SECONDS = 90;
+    private static final int RETRY_MAX_ATTEMPTS = 2;
+    private static final long RETRY_BASE_BACKOFF_MS = 1000;
 
     private static volatile ApiClient instance;
     private BoiApiService apiService;
@@ -44,6 +46,8 @@ public class ApiClient {
 
         AuthInterceptor authInterceptor = new AuthInterceptor(appContext);
 
+        RetryInterceptor retryInterceptor = new RetryInterceptor(RETRY_MAX_ATTEMPTS, RETRY_BASE_BACKOFF_MS);
+
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
 
@@ -51,10 +55,16 @@ public class ApiClient {
                 .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .addInterceptor(retryInterceptor)
                 .addInterceptor(authInterceptor)
                 .addInterceptor(loggingInterceptor);
 
         okHttpClient = okBuilder.build();
+
+        Log.d(TAG, "[buildClient] Timeout: connect=" + CONNECT_TIMEOUT_SECONDS
+                + "s, read=" + READ_TIMEOUT_SECONDS + "s, write=" + WRITE_TIMEOUT_SECONDS + "s");
+        Log.d(TAG, "[buildClient] RetryInterceptor: maxAttempts=" + (RETRY_MAX_ATTEMPTS + 1)
+                + ", baseBackoff=" + RETRY_BASE_BACKOFF_MS + "ms");
 
         Gson gson = new GsonBuilder()
                 .setLenient()

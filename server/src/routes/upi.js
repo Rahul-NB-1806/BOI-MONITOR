@@ -54,4 +54,40 @@ router.post('/', [
   }
 });
 
+router.delete('/', async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const result = await upiService.deleteAll(userId);
+    res.json({ message: 'All UPI transactions deleted', deletedCount: result.deletedCount });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/older-than', async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { days, date } = req.body;
+
+    let cutoffDate;
+    if (date) {
+      cutoffDate = new Date(date);
+    } else if (days) {
+      cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - parseInt(days, 10));
+    } else {
+      return res.status(400).json({ error: 'Provide either days or date' });
+    }
+
+    if (isNaN(cutoffDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date' });
+    }
+
+    const result = await upiService.deleteOlderThan(userId, cutoffDate);
+    res.json({ message: 'Old UPI transactions deleted', deletedCount: result.deletedCount });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

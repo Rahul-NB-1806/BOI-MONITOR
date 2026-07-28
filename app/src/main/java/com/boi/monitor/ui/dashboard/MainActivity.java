@@ -25,6 +25,7 @@ import com.boi.monitor.ui.admin.AdminLoginActivity;
 import com.boi.monitor.util.Constants;
 import com.boi.monitor.util.PrefsManager;
 import com.boi.monitor.ui.cheque.ChequeManagementFragment;
+import com.boi.monitor.ui.storage.StorageControlActivity;
 import com.boi.monitor.ui.upi.UpiTransactionFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -161,6 +162,10 @@ public class MainActivity extends AppCompatActivity {
         }
         if (item.getItemId() == R.id.action_server_settings) {
             showServerUrlDialog();
+            return true;
+        }
+        if (item.getItemId() == R.id.action_clear_data) {
+            startActivity(new Intent(this, StorageControlActivity.class));
             return true;
         }
         return super.onOptionsItemSelected(item);

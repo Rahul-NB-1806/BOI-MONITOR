@@ -1,282 +1,141 @@
-# Plan: Migrate from Firestore to MongoDB Atlas
+# Plan: Storage Control Page
 
-## Current Architecture
-- **Android App (Java)** talking directly to **Google Cloud Firestore** via Firebase SDK
-- **Firebase Auth**: Anonymous auth (normal users) + Email/Password (admin users)
-- **Collections**: `users/{uid}/upi_transactions`, `users/{uid}/cheque_transactions`, `users/{uid}/notification_logs`, `admin_users`
-- **Key files**: `FirebaseDataModule.java` (644 lines), `FirebaseAuthManager.java`, `BOIApplication.java`
+## Overview
+Add a dedicated storage management page showing per-category usage with delete controls, storage warnings, and date-wise deletion.
 
-## Target Architecture
+---
+
+## Menu
+- New menu item **"Clear Data"** in the overflow menu
+- Opens `StorageControlActivity`
+
+---
+
+## Page Layout
+
 ```
-Android App --Retrofit/HTTP--> Node.js/Express API --Mongoose--> MongoDB Atlas
-                                    + Atlas App Services (auth)
+┌──────────────────────────────────────┐
+│  📊 Storage Control                  │
+├──────────────────────────────────────┤
+│                                      │
+│  ⚠ Storage is 92% full — Delete old │  ← Red banner when > 80%
+│                                      │
+│  ┌─ UPI Transactions ──────────────┐ │
+│  │ Count: 42   |   2.1 MB  / 5.0 MB│ │
+│  │ ██████████████░░░░░░░░░  42%    │ │
+│  │ [🗑 Delete All UPI]             │ │
+│  └──────────────────────────────────┘ │
+│                                      │
+│  ┌─ Cheque Transactions ───────────┐ │
+│  │ Count: 15   |   0.8 MB  / 5.0 MB│ │
+│  │ ████████████░░░░░░░░░░░  16%    │ │
+│  │ [🗑 Delete All Cheques]         │ │
+│  └──────────────────────────────────┘ │
+│                                      │
+│  ┌─ Notification Logs ─────────────┐ │
+│  │ Count: 128  |   3.4 MB  / 5.0 MB│ │
+│  │ ██████████████████░░░░░  68%    │ │
+│  │ [🗑 Delete All Logs]           │ │
+│  └──────────────────────────────────┘ │
+│                                      │
+│  ┌─ Total ─────────────────────────┐ │
+│  │ 6.3 MB / 100 MB                 │ │
+│  │ ██████░░░░░░░░░░░░░░░░   6%     │ │
+│  └──────────────────────────────────┘ │
+│                                      │
+│  ─── Date-wise Delete ──────────     │
+│                                      │
+│  Delete records older than           │
+│  [  30  ] days                       │
+│  or pick date: [📅 Select]           │
+│                                      │
+│  [🗑 Delete Selected]                 │
+│                                      │
+└──────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 1: MongoDB Atlas Setup
+## Storage Warning Thresholds
 
-### 1.1 Create Atlas Cluster
-- Create account at cloud.mongodb.com
-- Create a cluster (M0 free tier for dev, M10+ for production)
-- Create database: `boi_monitor`
+| Usage | Bar Color | Banner | Message |
+|-------|-----------|--------|---------|
+| < 80% | Default | None | — |
+| 80% - 89% | Yellow/Amber | Show | "Storage nearly full — consider deleting old data" |
+| 90%+ | Red | Show (bold) | "⚠ Storage almost full! Delete old records soon" |
 
-### 1.2 MongoDB Collections (replace Firestore subcollections)
-
-| Firestore Path | MongoDB Collection | Document Schema |
-|---|---|---|
-| `users/{uid}/upi_transactions` | `upi_transactions` | `{ userId, amount, transactionType, accountSuffix, referenceNumber, debitedAccount, transactionDate, voiceAnnounced, timestamp }` |
-| `users/{uid}/cheque_transactions` | `cheque_transactions` | `{ userId, chequeNumber, amount, status, availableBalance, transactionDate, favouringParty, timestamp }` |
-| `users/{uid}/notification_logs` | `notification_logs` | `{ userId, notificationType, processed, processingError, rawTextStored, packageName, timestamp }` |
-| `admin_users` | `admin_users` | `{ userId, email, createdAt }` |
-
-### 1.3 Create Indexes
-```javascript
-db.upi_transactions.createIndex({ userId: 1, timestamp: -1 })
-db.upi_transactions.createIndex({ userId: 1, referenceNumber: 1 })
-db.cheque_transactions.createIndex({ userId: 1, timestamp: -1 })
-db.cheque_transactions.createIndex({ userId: 1, chequeNumber: 1 })
-db.notification_logs.createIndex({ userId: 1, timestamp: -1 })
-db.admin_users.createIndex({ userId: 1 }, { unique: true })
-```
+- Each category has its own bar + warning
+- Top banner appears when **any** category or total exceeds threshold
 
 ---
 
-## Phase 2: Atlas App Services (Auth)
+## What Each Section Shows
 
-### 2.1 Enable App Services
-- Enable Atlas App Services in the Atlas project
-- Enable Email/Password authentication provider
-- Use API Key authentication for anonymous users (Atlas lacks native anonymous auth)
+| Section | Data Source | Delete Action |
+|---------|-------------|---------------|
+| UPI Transactions | `GET /api/upi` (count) | `DELETE /api/upi` |
+| Cheque Transactions | `GET /api/cheques` (count) | `DELETE /api/cheques` |
+| Notification Logs | `GET /api/logs` (count) | `DELETE /api/logs` |
+| Total | Sum of all 3 | — |
 
-### 2.2 Auth Strategy
-- **Option A (Recommended):** API Key auth -- fixed API key per app build, backend creates/retrieves user sessions
-- **Option B:** Custom JWT -- backend generates JWTs for anonymous users
-
----
-
-## Phase 3: Backend API Server (Node.js + Express)
-
-### 3.1 Project Structure
-```
-server/
-├── package.json
-├── src/
-│   ├── index.js              # Express app entry
-│   ├── config.js             # MongoDB URI, Atlas config
-│   ├── middleware/
-│   │   ├── auth.js           # API key + user ID verification
-│   │   └── errorHandler.js
-│   ├── models/
-│   │   ├── UpiTransaction.js
-│   │   ├── ChequeTransaction.js
-│   │   ├── NotificationLog.js
-│   │   └── AdminUser.js
-│   ├── routes/
-│   │   ├── upi.js            # /api/upi/*
-│   │   ├── cheques.js        # /api/cheques/*
-│   │   ├── logs.js           # /api/logs/*
-│   │   ├── admin.js          # /api/admin/*
-│   │   └── auth.js           # /api/auth/*
-│   └── services/
-│       ├── dataService.js    # CRUD operations
-│       └── statsService.js   # Dashboard aggregation
-```
-
-### 3.2 API Endpoints
-
-| Method | Endpoint | Purpose | Replaces |
-|--------|----------|---------|----------|
-| POST | `/api/auth/register` | Register user | `FirebaseAuthManager.signIn()` |
-| POST | `/api/auth/login` | Login user, return JWT | `FirebaseAuthManager.signIn()` |
-| POST | `/api/auth/anonymous` | Create anonymous session | `signInAnonymously()` |
-| GET | `/api/upi` | List UPI transactions | Firestore snapshot listener |
-| POST | `/api/upi` | Save UPI transaction | `saveUpiCredit()` |
-| GET | `/api/cheques` | List cheque transactions | Firestore snapshot listener |
-| POST | `/api/cheques` | Save/update cheque (upsert) | `saveChequeCleared/Returned/Presented()` |
-| GET | `/api/logs` | List notification logs | Firestore snapshot listener |
-| POST | `/api/logs` | Save notification log | `saveLog()` |
-| DELETE | `/api/user/data` | Delete all user data | `deleteAllUserData()` |
-| GET | `/api/admin/stats` | Admin dashboard stats | `collectionGroup` queries |
-| POST | `/api/admin/migrate` | Trigger data migration | `migrateOldDataIfNeeded()` |
-
-### 3.3 Key Implementation: Cheque Upsert
-Replaces Firestore's `SetOptions.merge()` pattern:
-```javascript
-await ChequeTransaction.findOneAndUpdate(
-  { userId, chequeNumber: cleanNum },
-  { $set: data },
-  { upsert: true }
-);
-```
+Each section has:
+- Document count
+- Estimated storage in MB (`count × avgDocSize`)
+- Progress bar (relative to a per-section cap)
+- "Delete All" button with confirmation dialog
 
 ---
 
-## Phase 4: Android App Changes
+## Date-wise Delete
 
-### 4.1 Dependency Changes (`app/build.gradle`)
-```gradle
-// REMOVE:
-// implementation platform('com.google.firebase:firebase-bom:32.7.0')
-// implementation 'com.google.firebase:firebase-auth'
-// implementation 'com.google.firebase:firebase-firestore'
+- Text input for **number of days**
+- **Date picker** button to pick a specific cutoff date
+- "Delete Selected" button deletes records **older than** the chosen date from **all 3 collections**
+- Shows estimated affected count before confirming
 
-// ADD:
-implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-implementation 'com.squareup.okhttp3:logging-interceptor:4.12.0'
-```
-Keep `firebase-analytics` and `firebase-crashlytics` if desired.
+---
 
-### 4.2 File Changes
+## Server Changes
 
-| File | Action |
+| File | Change |
 |------|--------|
-| `FirebaseDataModule.java` | Rewrite to use Retrofit API calls instead of Firestore |
-| `FirebaseAuthManager.java` | Rewrite to use JWT auth with SharedPreferences token storage |
-| `BOIApplication.java` | Remove Firestore init, add Retrofit/OkHttp init |
-| `ChequeTransaction.java` | Remove `@DocumentId`, `@ServerTimestamp`, `@IgnoreExtraProperties`. Add `userId`. |
-| `UpiTransaction.java` | Same as above |
-| `NotificationLog.java` | Same as above |
-| `Constants.java` | Remove Firestore collection names, add API base URL |
-| `DashboardViewModel.java` | No change (still uses LiveData) |
-| `AdminPanelActivity.java` | Update to use API |
-| `AdminLoginActivity.java` | Update to use API auth |
+| `server/src/services/dataService.js` | Add `deleteAll()`, `deleteOlderThan()`, `count()` for all 3 services |
+| `server/src/routes/logs.js` | Add `DELETE /api/logs`, `DELETE /api/logs/older-than` |
+| `server/src/routes/upi.js` | Add `DELETE /api/upi`, `DELETE /api/upi/older-than` |
+| `server/src/routes/cheques.js` | Add `DELETE /api/cheques`, `DELETE /api/cheques/older-than` |
+| **New** `server/src/routes/storage.js` | `GET /api/storage/stats` |
+| `server/src/index.js` | Register storage route |
 
-### 4.3 New Files to Create
+### Storage Stats Endpoint
 
-| File | Purpose |
-|------|---------|
-| `app/.../network/ApiDataModule.java` | New data layer (replaces FirebaseDataModule) |
-| `app/.../network/BoiApiService.java` | Retrofit interface |
-| `app/.../network/AuthManager.java` | New JWT auth manager |
-| `app/.../network/AuthInterceptor.java` | OkHttp interceptor for auth tokens |
-| `app/.../network/ApiClient.java` | Retrofit client setup |
-
-### 4.4 Retrofit Interface
-```java
-public interface BoiApiService {
-    @POST("api/auth/login")
-    Call<AuthResponse> login(@Body LoginRequest request);
-
-    @POST("api/auth/anonymous")
-    Call<AuthResponse> anonymousAuth(@Header("X-API-Key") String apiKey);
-
-    @GET("api/upi")
-    Call<List<UpiTransaction>> getUpiTransactions(
-        @Header("Authorization") String token,
-        @Query("limit") int limit);
-
-    @POST("api/upi")
-    Call<Void> saveUpiTransaction(
-        @Header("Authorization") String token,
-        @Body UpiTransaction tx);
-
-    @GET("api/cheques")
-    Call<List<ChequeTransaction>> getChequeTransactions(
-        @Header("Authorization") String token,
-        @Query("limit") int limit);
-
-    @POST("api/cheques")
-    Call<Void> saveChequeTransaction(
-        @Header("Authorization") String token,
-        @Body ChequeTransaction tx);
-
-    @POST("api/logs")
-    Call<Void> saveLog(
-        @Header("Authorization") String token,
-        @Body NotificationLog log);
-
-    @DELETE("api/user/data")
-    Call<Void> deleteAllData(@Header("Authorization") String token);
+```
+GET /api/storage/stats
+Response:
+{
+  "upi":    { "count": 42,  "estimatedMB": 2.1 },
+  "cheques": { "count": 15,  "estimatedMB": 0.8 },
+  "logs":   { "count": 128, "estimatedMB": 3.4 },
+  "total":  { "count": 185, "estimatedMB": 6.3 }
 }
 ```
 
-### 4.5 Real-Time Updates Strategy
-- **Current:** Firestore `addSnapshotListener()` for real-time data
-- **New:** Polling at 30-second intervals using `Handler.postDelayed()`
-- **Future upgrade:** Add SSE (Server-Sent Events) endpoint on backend for push updates
-
-### 4.6 Offline Support
-- Firestore offline persistence is lost with REST API
-- Mitigation: OkHttp cache interceptor + Room/SQLite local cache if needed
-- Initial migration: polling is sufficient
+Avg doc sizes used for estimation: UPI ~250B, Cheque ~300B, Log ~200B.
 
 ---
 
-## Phase 5: Data Migration
+## Android Changes
 
-### 5.1 Migration Script (`scripts/firestore-to-mongodb.js`)
-1. Connect to Firestore via Firebase Admin SDK
-2. Read all user data from `users/{uid}/...` subcollections
-3. Transform: flatten into documents with `userId` field
-4. Insert into MongoDB Atlas via Mongoose
+| File | Change |
+|------|--------|
+| `app/.../network/BoiApiService.java` | Add 7 new Retrofit endpoints |
+| `app/.../network/ApiDataModule.java` | Add delete/count methods + `getStorageStats()` |
+| **New** `app/.../ui/storage/StorageControlActivity.java` | Full storage UI with 4 sections, progress bars, date picker |
+| **New** `app/res/layout/activity_storage_control.xml` | Layout |
+| `app/.../ui/dashboard/MainActivity.java` | Add "Clear Data" menu handler |
+| `app/res/menu/main_menu.xml` | Add "Clear Data" item |
 
-### 5.2 Migration Strategy
-- Run migration ONCE before deploying new app version
-- Keep Firestore data as backup for 30 days
-- New app uses MongoDB Atlas from day one
+### Confirmations
 
----
-
-## Phase 6: Admin Panel Changes
-
-Replace `collectionGroup("notification_logs")` with MongoDB aggregation:
-```javascript
-// GET /api/admin/stats
-db.notification_logs.aggregate([
-  { $group: { _id: "$notificationType", count: { $sum: 1 } } }
-])
-```
-
----
-
-## Phase 7: Testing & Deployment
-
-1. Write unit tests for all API endpoints
-2. Test Android app against local dev server
-3. Deploy backend (Render, Railway, or VPS)
-4. Update `Constants.java` with production API URL
-5. Build and test Android app
-6. Run Firestore-to-MongoDB migration script
-7. Monitor for 24-48 hours before decommissioning Firestore
-
----
-
-## Summary of Changes
-
-### Files to Modify (11)
-- `app/build.gradle`
-- `BOIApplication.java`
-- `FirebaseDataModule.java` (rewrite)
-- `FirebaseAuthManager.java` (rewrite)
-- `ChequeTransaction.java`
-- `UpiTransaction.java`
-- `NotificationLog.java`
-- `Constants.java`
-- `AdminPanelActivity.java`
-- `AdminLoginActivity.java`
-- `firestore.rules` (can be removed)
-
-### Files to Create (~15)
-- `server/package.json`
-- `server/src/index.js`
-- `server/src/config.js`
-- `server/src/models/*.js` (4 files)
-- `server/src/routes/*.js` (5 files)
-- `server/src/middleware/auth.js`
-- `server/src/services/*.js` (2 files)
-- `scripts/firestore-to-mongodb.js`
-- `app/.../network/ApiDataModule.java`
-- `app/.../network/BoiApiService.java`
-- `app/.../network/AuthManager.java`
-- `app/.../network/AuthInterceptor.java`
-- `app/.../network/ApiClient.java`
-
-### Risk Assessment
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Lose real-time Firestore listeners | Dashboard won't auto-refresh | 30-second polling fallback |
-| Lose offline persistence | App needs network for data | OkHttp cache + optional Room DB |
-| Auth migration complexity | Users lose existing sessions | Force re-authentication on first launch |
-| Data migration failures | Missing transaction history | Run migration script with rollback plan |
+Every delete action:
+1. Show AlertDialog with affected count + warning
+2. On confirm → call API → refresh stats on success → show Toast

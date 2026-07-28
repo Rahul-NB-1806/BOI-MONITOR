@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -39,10 +40,14 @@ import java.util.List;
  */
 public class DashboardFragment extends Fragment {
 
+    private static final String TAG = "DashboardFragment";
+    private static final long REFRESH_DEBOUNCE_MS = 5000;
+
     private FragmentDashboardBinding binding;
     private DashboardViewModel       viewModel;
     private UpiTransactionAdapter    upiAdapter;
     private ChequeAdapter            chequeAdapter;
+    private long                     lastRefreshTime;
 
     @Nullable
     @Override
@@ -66,9 +71,11 @@ public class DashboardFragment extends Fragment {
     private void setupSwipeRefresh() {
         SwipeRefreshLayout swipeRefresh = binding.swipeRefresh;
         swipeRefresh.setOnRefreshListener(() -> {
+            Log.d(TAG, "[setupSwipeRefresh] User pulled to refresh");
             ApiDataModule.getInstance().refreshAll();
             swipeRefresh.postDelayed(() -> {
                 if (swipeRefresh.isRefreshing()) {
+                    Log.w(TAG, "[setupSwipeRefresh] Force stopping refresh after timeout");
                     swipeRefresh.setRefreshing(false);
                 }
             }, 5000);
@@ -78,7 +85,16 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        Log.d(TAG, "[onResume] Fragment resumed");
         updatePermissionChip();
+        long now = System.currentTimeMillis();
+        if (now - lastRefreshTime > REFRESH_DEBOUNCE_MS) {
+            lastRefreshTime = now;
+            Log.d(TAG, "[onResume] Debounce passed, refreshing data");
+            ApiDataModule.getInstance().refreshAll();
+        } else {
+            Log.d(TAG, "[onResume] Skipping refresh, debounced");
+        }
     }
 
     @Override

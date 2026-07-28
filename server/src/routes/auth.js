@@ -88,17 +88,28 @@ router.post('/login', [
 
 router.post('/anonymous', authenticateApiKey, async (req, res, next) => {
   try {
-    const deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    const userId = `anon_${deviceId}`;
+    let { userId } = req.body;
 
-    const existingUser = await userService.findById(userId);
-    if (!existingUser) {
-      await userService.create({
-        userId,
-        email: `${userId}@anonymous.boi`,
-        password: await bcrypt.hash(deviceId, 12)
-      });
+    if (userId) {
+      const existingUser = await userService.findById(userId);
+      if (existingUser) {
+        const token = jwt.sign(
+          { userId, email: existingUser.email, isAnonymous: true },
+          config.jwtSecret,
+          { expiresIn: '30d' }
+        );
+        return res.json({ token, userId, message: 'Anonymous session renewed' });
+      }
     }
+
+    const deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    userId = `anon_${deviceId}`;
+
+    await userService.create({
+      userId,
+      email: `${userId}@anonymous.boi`,
+      password: await bcrypt.hash(deviceId, 12)
+    });
 
     const token = jwt.sign(
       { userId, email: `${userId}@anonymous.boi`, isAnonymous: true },
