@@ -33,13 +33,13 @@ router.post('/', [
     const userId = req.user.userId;
     const logData = {
       userId,
-      notificationType: req.body.notificationType || null,
-      processed: req.body.processed || false,
-      processingError: req.body.processingError || null,
-      rawTextStored: req.body.rawTextStored || null,
-      packageName: req.body.packageName || null,
       timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
     };
+    if (req.body.notificationType !== undefined && req.body.notificationType !== null) logData.notificationType = req.body.notificationType;
+    if (req.body.processed !== undefined && req.body.processed !== null) logData.processed = req.body.processed;
+    if (req.body.processingError !== undefined && req.body.processingError !== null) logData.processingError = req.body.processingError;
+    if (req.body.rawTextStored !== undefined && req.body.rawTextStored !== null) logData.rawTextStored = req.body.rawTextStored;
+    if (req.body.packageName !== undefined && req.body.packageName !== null) logData.packageName = req.body.packageName;
 
     const log = await logService.create(logData);
 

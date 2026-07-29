@@ -35,13 +35,13 @@ router.post('/', [
       userId,
       amount: req.body.amount,
       transactionType: req.body.transactionType,
-      accountSuffix: req.body.accountSuffix || null,
-      referenceNumber: req.body.referenceNumber || null,
-      debitedAccount: req.body.debitedAccount || null,
-      transactionDate: req.body.transactionDate || null,
-      voiceAnnounced: req.body.voiceAnnounced || false,
       timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
     };
+    if (req.body.accountSuffix !== undefined && req.body.accountSuffix !== null) transactionData.accountSuffix = req.body.accountSuffix;
+    if (req.body.referenceNumber !== undefined && req.body.referenceNumber !== null) transactionData.referenceNumber = req.body.referenceNumber;
+    if (req.body.debitedAccount !== undefined && req.body.debitedAccount !== null) transactionData.debitedAccount = req.body.debitedAccount;
+    if (req.body.transactionDate !== undefined && req.body.transactionDate !== null) transactionData.transactionDate = req.body.transactionDate;
+    if (req.body.voiceAnnounced !== undefined && req.body.voiceAnnounced !== null) transactionData.voiceAnnounced = req.body.voiceAnnounced;
 
     const transaction = await upiService.create(transactionData);
 

@@ -80,9 +80,15 @@ const chequeService = {
   async upsert(data) {
     const { userId, chequeNumber } = data;
     const cleanNum = String(chequeNumber).trim().replace(/^0+(?!$)/, '');
+    const setData = { chequeNumber: cleanNum };
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null && key !== 'chequeNumber') {
+        setData[key] = value;
+      }
+    }
     return await ChequeTransaction.findOneAndUpdate(
       { chequeNumber: cleanNum },
-      { $set: { ...data, chequeNumber: cleanNum } },
+      { $set: setData },
       { upsert: true, new: true }
     ).lean();
   },

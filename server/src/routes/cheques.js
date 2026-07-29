@@ -30,16 +30,17 @@ router.post('/', [
     }
 
     const userId = req.user.userId;
+    // Only include fields that are actually present (avoid null overwrites)
     const chequeData = {
       userId,
       chequeNumber: req.body.chequeNumber,
-      amount: req.body.amount || null,
-      status: req.body.status || null,
-      availableBalance: req.body.availableBalance || null,
-      transactionDate: req.body.transactionDate || null,
-      favouringParty: req.body.favouringParty || null,
       timestamp: req.body.timestamp ? new Date(req.body.timestamp) : new Date()
     };
+    if (req.body.amount !== undefined && req.body.amount !== null) chequeData.amount = req.body.amount;
+    if (req.body.status !== undefined && req.body.status !== null) chequeData.status = req.body.status;
+    if (req.body.availableBalance !== undefined && req.body.availableBalance !== null) chequeData.availableBalance = req.body.availableBalance;
+    if (req.body.transactionDate !== undefined && req.body.transactionDate !== null) chequeData.transactionDate = req.body.transactionDate;
+    if (req.body.favouringParty !== undefined && req.body.favouringParty !== null) chequeData.favouringParty = req.body.favouringParty;
 
     const cheque = await chequeService.upsert(chequeData);
 
