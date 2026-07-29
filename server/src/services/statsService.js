@@ -5,7 +5,6 @@ const NotificationLog = require('../models/NotificationLog');
 const statsService = {
   async getNotificationTypeCounts(userId) {
     const result = await NotificationLog.aggregate([
-      { $match: { userId } },
       { $group: { _id: '$notificationType', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
@@ -13,14 +12,13 @@ const statsService = {
   },
 
   async getUpiTransactionStats(userId) {
-    const total = await UpiTransaction.countDocuments({ userId });
+    const total = await UpiTransaction.countDocuments({});
 
     const typeBreakdown = await UpiTransaction.aggregate([
-      { $match: { userId } },
       { $group: { _id: '$transactionType', count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } }
     ]);
 
-    const recentTransactions = await UpiTransaction.find({ userId })
+    const recentTransactions = await UpiTransaction.find({})
       .sort({ timestamp: -1 })
       .limit(10)
       .lean();
@@ -37,14 +35,13 @@ const statsService = {
   },
 
   async getChequeTransactionStats(userId) {
-    const total = await ChequeTransaction.countDocuments({ userId });
+    const total = await ChequeTransaction.countDocuments({});
 
     const statusBreakdown = await ChequeTransaction.aggregate([
-      { $match: { userId } },
       { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } }
     ]);
 
-    const recentCheques = await ChequeTransaction.find({ userId })
+    const recentCheques = await ChequeTransaction.find({})
       .sort({ timestamp: -1 })
       .limit(10)
       .lean();

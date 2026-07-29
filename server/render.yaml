@@ -2,7 +2,7 @@ services:
   - type: web
     name: boi-monitor-api
     runtime: node
-    repo: https://github.com/YOUR_USERNAME/BOIMonitor
+    repo: https://github.com/Rahul-NB-1806/BOI-MONITOR
     branch: main
     rootDir: server
     buildCommand: npm install

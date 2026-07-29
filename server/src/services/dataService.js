@@ -31,9 +31,9 @@ const userService = {
 
   async deleteAllData(userId) {
     const results = await Promise.all([
-      UpiTransaction.deleteMany({ userId }),
-      ChequeTransaction.deleteMany({ userId }),
-      NotificationLog.deleteMany({ userId })
+      UpiTransaction.deleteMany({}),
+      ChequeTransaction.deleteMany({}),
+      NotificationLog.deleteMany({})
     ]);
     return {
       upiDeleted: results[0].deletedCount,
@@ -45,7 +45,7 @@ const userService = {
 
 const upiService = {
   async findAll(userId, limit = 100) {
-    return await UpiTransaction.find({ userId })
+    return await UpiTransaction.find({})
       .sort({ timestamp: -1 })
       .limit(limit)
       .lean();
@@ -57,21 +57,21 @@ const upiService = {
   },
 
   async deleteAll(userId) {
-    return await UpiTransaction.deleteMany({ userId });
+    return await UpiTransaction.deleteMany({});
   },
 
   async deleteOlderThan(userId, cutoffDate) {
-    return await UpiTransaction.deleteMany({ userId, timestamp: { $lt: cutoffDate } });
+    return await UpiTransaction.deleteMany({ timestamp: { $lt: cutoffDate } });
   },
 
   async count(userId) {
-    return await UpiTransaction.countDocuments({ userId });
+    return await UpiTransaction.countDocuments({});
   }
 };
 
 const chequeService = {
   async findAll(userId, limit = 100) {
-    return await ChequeTransaction.find({ userId })
+    return await ChequeTransaction.find({})
       .sort({ timestamp: -1 })
       .limit(limit)
       .lean();
@@ -81,28 +81,28 @@ const chequeService = {
     const { userId, chequeNumber } = data;
     const cleanNum = String(chequeNumber).trim().replace(/^0+(?!$)/, '');
     return await ChequeTransaction.findOneAndUpdate(
-      { userId, chequeNumber: cleanNum },
+      { chequeNumber: cleanNum },
       { $set: { ...data, chequeNumber: cleanNum } },
       { upsert: true, new: true }
     ).lean();
   },
 
   async deleteAll(userId) {
-    return await ChequeTransaction.deleteMany({ userId });
+    return await ChequeTransaction.deleteMany({});
   },
 
   async deleteOlderThan(userId, cutoffDate) {
-    return await ChequeTransaction.deleteMany({ userId, timestamp: { $lt: cutoffDate } });
+    return await ChequeTransaction.deleteMany({ timestamp: { $lt: cutoffDate } });
   },
 
   async count(userId) {
-    return await ChequeTransaction.countDocuments({ userId });
+    return await ChequeTransaction.countDocuments({});
   }
 };
 
 const logService = {
   async findAll(userId, limit = 100) {
-    return await NotificationLog.find({ userId })
+    return await NotificationLog.find({})
       .sort({ timestamp: -1 })
       .limit(limit)
       .lean();
@@ -114,15 +114,15 @@ const logService = {
   },
 
   async deleteAll(userId) {
-    return await NotificationLog.deleteMany({ userId });
+    return await NotificationLog.deleteMany({});
   },
 
   async deleteOlderThan(userId, cutoffDate) {
-    return await NotificationLog.deleteMany({ userId, timestamp: { $lt: cutoffDate } });
+    return await NotificationLog.deleteMany({ timestamp: { $lt: cutoffDate } });
   },
 
   async count(userId) {
-    return await NotificationLog.countDocuments({ userId });
+    return await NotificationLog.countDocuments({});
   }
 };
 
